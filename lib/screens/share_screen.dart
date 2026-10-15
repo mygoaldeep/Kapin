@@ -1,10 +1,10 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../services/backend.dart';
 import '../services/share_controller.dart';
 import '../utils.dart';
 import '../widgets/map_panel.dart';
@@ -12,7 +12,7 @@ import '../widgets/pulse_dot.dart';
 
 class ShareScreen extends StatefulWidget {
   const ShareScreen({super.key, required this.user});
-  final User user;
+  final AppUser user;
 
   @override
   State<ShareScreen> createState() => _ShareScreenState();
@@ -58,7 +58,7 @@ class _ShareScreenState extends State<ShareScreen> {
 
   Future<void> _signOut() async {
     await _c.stopSharing();
-    await FirebaseAuth.instance.signOut();
+    await Backend.instance.auth.signOut();
   }
 
   @override
