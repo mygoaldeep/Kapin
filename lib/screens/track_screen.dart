@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../models/share_session.dart';
+import '../services/backend.dart';
 import '../utils.dart';
 import '../widgets/map_panel.dart';
 import '../widgets/pulse_dot.dart';
@@ -21,10 +21,16 @@ class TrackScreen extends StatefulWidget {
 class _TrackScreenState extends State<TrackScreen> {
   final _code = TextEditingController();
   GoogleMapController? _map;
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _sub;
+  StreamSubscription<ShareSession?>? _sub;
   ShareSession? _session;
   String? _error;
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (Backend.instance.isDemo) _code.text = demoShareCode;
+  }
 
   @override
   void dispose() {
@@ -53,10 +59,10 @@ class _TrackScreenState extends State<TrackScreen> {
       _session = null;
     });
 
-    _sub = FirebaseFirestore.instance.collection('shares').doc(id).snapshots().listen(
-      (snap) {
+    _sub = Backend.instance.shares.watch(id).listen(
+      (s) {
         if (!mounted) return;
-        if (!snap.exists) {
+        if (s == null) {
           setState(() {
             _loading = false;
             _session = null;
@@ -64,7 +70,6 @@ class _TrackScreenState extends State<TrackScreen> {
           });
           return;
         }
-        final s = ShareSession.fromDoc(snap);
         setState(() {
           _loading = false;
           _session = s;
@@ -140,6 +145,12 @@ class _TrackScreenState extends State<TrackScreen> {
           const SizedBox(height: 4),
           Text('Enter the code someone sent you to see their live location.',
               style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
+          if (Backend.instance.isDemo) ...[
+            const SizedBox(height: 6),
+            Text('Test mode: tap Track to follow the demo friend ($demoShareCode), '
+                'or track a code you shared from this device.',
+                style: text.bodySmall?.copyWith(color: scheme.tertiary)),
+          ],
           const SizedBox(height: 16),
           TextField(
             controller: _code,
