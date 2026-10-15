@@ -1,12 +1,12 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../services/backend.dart';
 import 'share_screen.dart';
 import 'track_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key, required this.user});
-  final User user;
+  final AppUser user;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -17,12 +17,48 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      body: IndexedStack(
-        index: _index,
+      body: Stack(
         children: [
-          ShareScreen(user: widget.user),
-          const TrackScreen(),
+          IndexedStack(
+            index: _index,
+            children: [
+              ShareScreen(user: widget.user),
+              const TrackScreen(),
+            ],
+          ),
+          if (Backend.instance.isDemo)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 22),
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: scheme.tertiaryContainer,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          'TEST MODE',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: scheme.onTertiaryContainer,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
       bottomNavigationBar: NavigationBar(
