@@ -42,3 +42,32 @@ if "MAPS_API_KEY" not in g:
     g = re.sub(r"(defaultConfig\s*\{)", r"\1\n" + line, g, count=1)
 gradle.write_text(g)
 print("Android project patched.")
+
+# Some plugins (e.g. geocoding_android) pin compileSdk 33 but pull AndroidX
+# libraries that need 34+. Force a modern compileSdk on every plugin module.
+root = pathlib.Path("android/build.gradle.kts")
+if root.exists():
+    r = root.read_text()
+    if "Kapin: force compileSdk" not in r:
+        block = '''// Kapin: force compileSdk on plugin modules still pinned to an old SDK.
+subprojects {
+    val forceSdk: (Project) -> Unit = { p ->
+        val ext = p.extensions.findByName("android")
+        if (ext != null && p.name != "app") {
+            ext.javaClass.methods
+                .firstOrNull {
+                    it.name == "setCompileSdkVersion" &&
+                        it.parameterTypes.size == 1 &&
+                        it.parameterTypes[0] == Int::class.javaPrimitiveType
+                }
+                ?.invoke(ext, 36)
+        }
+    }
+    if (state.executed) forceSdk(this) else afterEvaluate { forceSdk(this) }
+}
+
+'''
+        root.write_text(block + r)
+        print("Root build.gradle.kts patched (compileSdk override).")
+else:
+    print("WARNING: android/build.gradle.kts not found; compileSdk override not applied.")
