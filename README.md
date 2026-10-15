@@ -1,4 +1,4 @@
-# Location Sharing (Flutter)
+# Kapin (Flutter)
 
 A Flutter rebuild of the Kotlin/Compose location-sharing MVP, with a modern
 Material 3 UI and live updates. Same Firebase data model, so the existing
@@ -14,36 +14,33 @@ Firestore documents and rules approach carry over.
 - Friendly sign-in errors, password toggle, form validation
 - Firestore rules now also enforce expiry on reads
 
-## Setup
-```bash
-# 1. Generate the native shells inside this folder
-flutter create --org com.example --project-name location_sharing .
+## Build
 
-# 2. Dependencies
+### GitHub Actions (no local setup)
+The workflow generates the Android project, patches it (`tool/patch_android.py`)
+and builds a debug APK you can download from the run's Artifacts.
+Add these repository secrets (Settings > Secrets and variables > Actions):
+`MAPS_API_KEY`, `FIREBASE_API_KEY`, `FIREBASE_APP_ID`,
+`FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET`
+(from your Firebase Android app config / `google-services.json`).
+The APK builds even with empty secrets, but the app needs real values to run.
+
+### Locally
+```bash
+flutter create --org com.kapin --project-name location_sharing --platforms=android .
+rm -f test/widget_test.dart
+python3 tool/patch_android.py
 flutter pub get
-#    If versions have moved on: flutter pub upgrade --major-versions
-
-# 3. Firebase (creates lib/firebase_options.dart)
-dart pub global activate flutterfire_cli
-flutterfire configure
+export MAPS_API_KEY=your_maps_key
+flutter run \
+  --dart-define=FIREBASE_API_KEY=... --dart-define=FIREBASE_APP_ID=... \
+  --dart-define=FIREBASE_MESSAGING_SENDER_ID=... --dart-define=FIREBASE_PROJECT_ID=... \
+  --dart-define=FIREBASE_STORAGE_BUCKET=...
 ```
-Then in the Firebase console: enable Email/Password auth, create Firestore,
-and publish `firestore.rules`.
+Or run `flutterfire configure` and let it overwrite `lib/firebase_options.dart`.
 
-### Android
-- Merge `android_setup/AndroidManifest.snippet.xml` into
-  `android/app/src/main/AndroidManifest.xml`.
-- Apply `android_setup/build.gradle.snippet.kts` to `android/app/build.gradle.kts`.
-- Put your key in `android/local.properties`: `MAPS_API_KEY=...`
-  (enable Maps SDK for Android in Google Cloud).
-
-### iOS (optional)
-Add `NSLocationWhenInUseUsageDescription` to `Info.plist` and provide the Maps key
-as described in the `google_maps_flutter` docs.
-
-```bash
-flutter run
-```
+In Firebase: enable Email/Password auth, create Firestore, publish `firestore.rules`.
+Enable Maps SDK for Android in Google Cloud.
 
 ## Limits to know
 - Sharing runs while the app is in the foreground. Continuous background
