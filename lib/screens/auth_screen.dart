@@ -1,5 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+import '../services/backend.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -31,39 +32,16 @@ class _AuthScreenState extends State<AuthScreen> {
       _error = null;
     });
     try {
-      final auth = FirebaseAuth.instance;
+      final auth = Backend.instance.auth;
       if (_register) {
-        await auth.createUserWithEmailAndPassword(
-            email: _email.text.trim(), password: _password.text);
+        await auth.register(_email.text.trim(), _password.text);
       } else {
-        await auth.signInWithEmailAndPassword(
-            email: _email.text.trim(), password: _password.text);
+        await auth.signIn(_email.text.trim(), _password.text);
       }
-    } on FirebaseAuthException catch (e) {
-      if (mounted) setState(() => _error = _friendly(e));
+    } on AuthFailure catch (e) {
+      if (mounted) setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  String _friendly(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'invalid-credential':
-      case 'wrong-password':
-      case 'user-not-found':
-        return 'Incorrect email or password.';
-      case 'email-already-in-use':
-        return 'An account with this email already exists.';
-      case 'weak-password':
-        return 'Choose a stronger password (at least 6 characters).';
-      case 'invalid-email':
-        return 'That email address looks invalid.';
-      case 'network-request-failed':
-        return 'No connection. Check your internet and retry.';
-      case 'too-many-requests':
-        return 'Too many attempts. Try again in a few minutes.';
-      default:
-        return e.message ?? 'Something went wrong.';
     }
   }
 
@@ -108,6 +86,21 @@ class _AuthScreenState extends State<AuthScreen> {
                       'Temporary, consent-based live location. You decide who sees it and when it stops.',
                       style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
                     ),
+                    if (Backend.instance.isDemo) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: scheme.tertiaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'Test mode: not connected to Firebase yet. Any email and a '
+                          '6+ character password will work, and nothing is saved online.',
+                          style: TextStyle(color: scheme.onTertiaryContainer),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 28),
                     SegmentedButton<bool>(
                       segments: const [
