@@ -1,7 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-/// A live-location share. Field names match the original Kotlin app, so
-/// existing Firestore data keeps working. `expiresAt` is epoch milliseconds.
+/// A live-location share. Backend-agnostic; Firestore serialization lives in
+/// `services/firebase_backend.dart`.
 class ShareSession {
   const ShareSession({
     required this.id,
@@ -25,27 +23,21 @@ class ShareSession {
 
   bool get isLive => active && expiresAt.isAfter(DateTime.now());
 
-  factory ShareSession.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final m = doc.data() ?? const <String, dynamic>{};
-    return ShareSession(
-      id: doc.id,
-      ownerId: m['ownerId'] as String? ?? '',
-      latitude: (m['latitude'] as num?)?.toDouble() ?? 0,
-      longitude: (m['longitude'] as num?)?.toDouble() ?? 0,
-      address: m['address'] as String? ?? '',
-      active: m['active'] as bool? ?? false,
-      expiresAt: DateTime.fromMillisecondsSinceEpoch((m['expiresAt'] as num?)?.toInt() ?? 0),
-      updatedAt: (m['updatedAt'] as Timestamp?)?.toDate(),
-    );
-  }
-
-  Map<String, dynamic> toMap() => {
-        'ownerId': ownerId,
-        'latitude': latitude,
-        'longitude': longitude,
-        'address': address,
-        'active': active,
-        'expiresAt': expiresAt.millisecondsSinceEpoch,
-        'updatedAt': FieldValue.serverTimestamp(),
-      };
+  ShareSession copyWith({
+    double? latitude,
+    double? longitude,
+    String? address,
+    bool? active,
+    DateTime? updatedAt,
+  }) =>
+      ShareSession(
+        id: id,
+        ownerId: ownerId,
+        latitude: latitude ?? this.latitude,
+        longitude: longitude ?? this.longitude,
+        address: address ?? this.address,
+        active: active ?? this.active,
+        expiresAt: expiresAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
 }
