@@ -12,6 +12,15 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart';
 
 class DefaultFirebaseOptions {
+  /// Build with --dart-define=DEMO_MODE=true to force demo mode.
+  static const bool forceDemo = bool.fromEnvironment('DEMO_MODE');
+
+  static bool get isConfigured =>
+      !forceDemo &&
+      android.apiKey.isNotEmpty &&
+      android.appId.isNotEmpty &&
+      android.projectId.isNotEmpty;
+
   static FirebaseOptions get currentPlatform {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       throw UnsupportedError('Only Android is configured. Run `flutterfire configure` for other platforms.');
