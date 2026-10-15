@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../models/share_session.dart';
+import 'backend.dart';
 
 class AppException implements Exception {
   AppException(this.message);
@@ -20,7 +20,7 @@ class ShareController extends ChangeNotifier {
   ShareController(this.userId);
 
   final String userId;
-  final _db = FirebaseFirestore.instance;
+  final _shares = Backend.instance.shares;
 
   Position? position;
   String address = '';
@@ -92,9 +92,8 @@ class ShareController extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      final ref = _db.collection('shares').doc(); // random, unguessable id
       final s = ShareSession(
-        id: ref.id,
+        id: _shares.newId(), // random, unguessable id
         ownerId: userId,
         latitude: p.latitude,
         longitude: p.longitude,
@@ -102,7 +101,7 @@ class ShareController extends ChangeNotifier {
         active: true,
         expiresAt: DateTime.now().add(duration),
       );
-      await ref.set(s.toMap());
+      await _shares.create(s);
       session = s;
       _beginTracking();
     } catch (_) {
@@ -148,12 +147,7 @@ class ShareController extends ChangeNotifier {
     }
     notifyListeners();
     try {
-      await _db.collection('shares').doc(s.id).update({
-        'latitude': p.latitude,
-        'longitude': p.longitude,
-        'address': address,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      await _shares.updatePosition(s.id, p.latitude, p.longitude, address);
     } catch (_) {/* transient; next update retries */}
   }
 
@@ -167,7 +161,7 @@ class ShareController extends ChangeNotifier {
     session = null;
     notifyListeners();
     try {
-      await _db.collection('shares').doc(s.id).update({'active': false});
+      await _shares.deactivate(s.id);
     } catch (_) {
       error = 'Sharing stopped locally, but the server could not be updated.';
       notifyListeners();
