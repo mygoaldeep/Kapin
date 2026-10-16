@@ -32,7 +32,7 @@ jobs:
             echo "::warning::FIREBASE_* secrets are empty. The APK will run in TEST MODE (demo data, no real Firebase)."
           fi
           if [ -z "$MAPS_API_KEY" ]; then
-            echo "::warning::MAPS_API_KEY is empty. The map will be blank."
+            echo "::warning::MAPS_API_KEY is empty. The app will show the preview map instead of Google Maps."
           fi
 
       # The repo holds only the Dart code; generate the Android shell and wire it up.
@@ -48,8 +48,16 @@ jobs:
 
       # Release + per-ABI split: ~15-25 MB per APK instead of a ~150 MB debug build.
       - name: Build release APKs
+        env:
+          # Fixed TEST keystore so every build has the same signature and can
+          # update the previous install. Replace with a private keystore for Play.
+          KAPIN_KEYSTORE_PATH: ${{ github.workspace }}/android_setup/kapin-test.jks
+          KAPIN_KEYSTORE_PASSWORD: kapin-test
+          KAPIN_KEY_ALIAS: kapin
+          KAPIN_KEY_PASSWORD: kapin-test
         run: >
           flutter build apk --release --split-per-abi
+          --dart-define=MAPS_API_KEY=${{ secrets.MAPS_API_KEY }}
           --dart-define=FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}
           --dart-define=FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}
           --dart-define=FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
