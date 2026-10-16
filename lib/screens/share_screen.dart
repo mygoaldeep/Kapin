@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../services/backend.dart';
 import '../services/share_controller.dart';
 import '../utils.dart';
+import '../widgets/app_map.dart';
 import '../widgets/map_panel.dart';
 import '../widgets/pulse_dot.dart';
 
@@ -20,7 +21,7 @@ class ShareScreen extends StatefulWidget {
 
 class _ShareScreenState extends State<ShareScreen> {
   late final ShareController _c = ShareController(widget.user.uid);
-  GoogleMapController? _map;
+  final _mapCtl = AppMapController();
   Duration _duration = const Duration(hours: 1);
   Position? _lastCamera;
 
@@ -37,17 +38,14 @@ class _ShareScreenState extends State<ShareScreen> {
   void dispose() {
     _c.removeListener(_follow);
     _c.dispose();
-    _map?.dispose();
     super.dispose();
   }
 
   void _follow() {
     final p = _c.position;
-    if (p == null || _map == null || identical(p, _lastCamera)) return;
+    if (p == null || identical(p, _lastCamera)) return;
     _lastCamera = p;
-    _map!.animateCamera(
-      CameraUpdate.newLatLngZoom(LatLng(p.latitude, p.longitude), 16.5),
-    );
+    _mapCtl.move(LatLng(p.latitude, p.longitude));
   }
 
   void _snack(String msg) {
@@ -63,8 +61,6 @@ class _ShareScreenState extends State<ShareScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return ListenableBuilder(
       listenable: _c,
       builder: (context, _) {
@@ -74,33 +70,13 @@ class _ShareScreenState extends State<ShareScreen> {
         return Stack(
           children: [
             Positioned.fill(
-              child: GoogleMap(
-                initialCameraPosition: const CameraPosition(target: LatLng(20, 0), zoom: 1.5),
-                onMapCreated: (m) {
-                  _map = m;
-                  _follow();
-                },
-                myLocationEnabled: p != null,
-                myLocationButtonEnabled: false,
-                zoomControlsEnabled: false,
-                mapToolbarEnabled: false,
-                compassEnabled: false,
-                padding: EdgeInsets.only(bottom: p == null ? 0 : _mapBottomPadding),
-                circles: {
-                  if (p != null)
-                    Circle(
-                      circleId: const CircleId('accuracy'),
-                      center: here!,
-                      radius: p.accuracy,
-                      fillColor: scheme.primary.withValues(alpha: 0.15),
-                      strokeColor: scheme.primary.withValues(alpha: 0.4),
-                      strokeWidth: 1,
-                    ),
-                },
-                markers: {
-                  if (here != null && _c.isSharing)
-                    Marker(markerId: const MarkerId('shared'), position: here),
-                },
+              child: AppMap(
+                controller: _mapCtl,
+                focus: here,
+                accuracyMeters: p?.accuracy,
+                markerAt: _c.isSharing ? here : null,
+                showMyLocation: p != null,
+                bottomPadding: p == null ? 0 : _mapBottomPadding,
               ),
             ),
             // Floating top controls
