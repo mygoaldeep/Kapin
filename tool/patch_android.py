@@ -80,3 +80,32 @@ subprojects {
         print("Root build.gradle.kts patched (compileSdk override).")
 else:
     print("WARNING: android/build.gradle.kts not found; compileSdk override not applied.")
+
+# Stable signing. Without this, every CI run signs with a brand-new debug key,
+# and Android refuses to install a build over one signed with a different key.
+if gradle.suffix == ".kts":
+    g = gradle.read_text()
+    if "KAPIN_KEYSTORE_PATH" not in g:
+        signing = '''    signingConfigs {
+        create("kapin") {
+            val ksPath = System.getenv("KAPIN_KEYSTORE_PATH")
+            if (ksPath != null) {
+                storeFile = file(ksPath)
+                storePassword = System.getenv("KAPIN_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KAPIN_KEY_ALIAS")
+                keyPassword = System.getenv("KAPIN_KEY_PASSWORD")
+            }
+        }
+    }
+
+'''
+        g = re.sub(r"(\n\s*buildTypes\s*\{)", "\n" + signing.rstrip("\n") + r"\n\1", g, count=1)
+        g = g.replace(
+            'signingConfig = signingConfigs.getByName("debug")',
+            'signingConfig = if (System.getenv("KAPIN_KEYSTORE_PATH") != null) '
+            'signingConfigs.getByName("kapin") else signingConfigs.getByName("debug")',
+        )
+        gradle.write_text(g)
+        print("Signing config added.")
+else:
+    print("WARNING: Groovy gradle detected; stable signing not applied.")
