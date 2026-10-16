@@ -7,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/share_session.dart';
 import '../services/backend.dart';
 import '../utils.dart';
+import '../widgets/app_map.dart';
 import '../widgets/map_panel.dart';
 import '../widgets/pulse_dot.dart';
 
@@ -20,7 +21,7 @@ class TrackScreen extends StatefulWidget {
 
 class _TrackScreenState extends State<TrackScreen> {
   final _code = TextEditingController();
-  GoogleMapController? _map;
+  final _mapCtl = AppMapController();
   StreamSubscription<ShareSession?>? _sub;
   ShareSession? _session;
   String? _error;
@@ -36,7 +37,6 @@ class _TrackScreenState extends State<TrackScreen> {
   void dispose() {
     _sub?.cancel();
     _code.dispose();
-    _map?.dispose();
     super.dispose();
   }
 
@@ -75,9 +75,7 @@ class _TrackScreenState extends State<TrackScreen> {
           _session = s;
           _error = null;
         });
-        _map?.animateCamera(
-          CameraUpdate.newLatLngZoom(LatLng(s.latitude, s.longitude), 16),
-        );
+        _mapCtl.move(LatLng(s.latitude, s.longitude), zoom: 16);
       },
       onError: (_) {
         if (!mounted) return;
@@ -106,20 +104,11 @@ class _TrackScreenState extends State<TrackScreen> {
     return Stack(
       children: [
         Positioned.fill(
-          child: GoogleMap(
-            initialCameraPosition: const CameraPosition(target: LatLng(20, 0), zoom: 1.5),
-            onMapCreated: (m) {
-              _map = m;
-              if (point != null) m.moveCamera(CameraUpdate.newLatLngZoom(point, 16));
-            },
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
-            mapToolbarEnabled: false,
-            compassEnabled: false,
-            padding: EdgeInsets.only(bottom: s == null ? 0 : 260),
-            markers: {
-              if (point != null) Marker(markerId: const MarkerId('target'), position: point),
-            },
+          child: AppMap(
+            controller: _mapCtl,
+            focus: point,
+            markerAt: point,
+            bottomPadding: s == null ? 0 : 260,
           ),
         ),
         Positioned(
