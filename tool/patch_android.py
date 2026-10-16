@@ -26,6 +26,15 @@ if "com.google.android.geo.API_KEY" not in s:
         s,
         count=1,
     )
+if "EnableImpeller" not in s:
+    # Some Samsung (Mali GPU) devices on Android 15/16 freeze or render blank with Impeller+Vulkan.
+    s = re.sub(
+        r"(<application\b[^>]*>)",
+        r'\1\n        <meta-data android:name="io.flutter.embedding.android.EnableImpeller" '
+        r'android:value="false" />',
+        s,
+        count=1,
+    )
 s = re.sub(r'android:label="[^"]*"', 'android:label="Kapin"', s, count=1)
 manifest.write_text(s)
 
