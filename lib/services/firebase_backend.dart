@@ -75,6 +75,10 @@ class FirebaseShareBackend implements ShareBackend {
         'active': s.active,
         'expiresAt': s.expiresAt.millisecondsSinceEpoch,
         'updatedAt': FieldValue.serverTimestamp(),
+        if (s.tripName != null) 'tripName': s.tripName,
+        if (s.destinationName != null) 'destinationName': s.destinationName,
+        if (s.destinationLat != null) 'destinationLat': s.destinationLat,
+        if (s.destinationLng != null) 'destinationLng': s.destinationLng,
       });
 
   @override
@@ -103,6 +107,10 @@ class FirebaseShareBackend implements ShareBackend {
           expiresAt:
               DateTime.fromMillisecondsSinceEpoch((m['expiresAt'] as num?)?.toInt() ?? 0),
           updatedAt: (m['updatedAt'] as Timestamp?)?.toDate(),
+          tripName: m['tripName'] as String?,
+          destinationName: m['destinationName'] as String?,
+          destinationLat: (m['destinationLat'] as num?)?.toDouble(),
+          destinationLng: (m['destinationLng'] as num?)?.toDouble(),
         );
       });
 }
