@@ -28,6 +28,7 @@ class AppMap extends StatefulWidget {
     this.focus,
     this.accuracyMeters,
     this.markerAt,
+    this.destination,
     this.showMyLocation = false,
     this.bottomPadding = 0,
   });
@@ -36,6 +37,7 @@ class AppMap extends StatefulWidget {
   final LatLng? focus;
   final double? accuracyMeters;
   final LatLng? markerAt;
+  final LatLng? destination;
   final bool showMyLocation;
   final double bottomPadding;
 
@@ -59,6 +61,7 @@ class _AppMapState extends State<AppMap> {
       return _PreviewMap(
         focus: widget.focus,
         marker: widget.markerAt,
+        destination: widget.destination,
         accuracy: widget.accuracyMeters,
         showMe: widget.showMyLocation,
         bottomPadding: widget.bottomPadding,
@@ -98,6 +101,12 @@ class _AppMapState extends State<AppMap> {
       markers: {
         if (widget.markerAt != null)
           Marker(markerId: const MarkerId('target'), position: widget.markerAt!),
+        if (widget.destination != null)
+          Marker(
+            markerId: const MarkerId('destination'),
+            position: widget.destination!,
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+          ),
       },
     );
   }
@@ -111,6 +120,7 @@ class _PreviewMap extends StatefulWidget {
   const _PreviewMap({
     required this.focus,
     required this.marker,
+    required this.destination,
     required this.accuracy,
     required this.showMe,
     required this.bottomPadding,
@@ -118,6 +128,7 @@ class _PreviewMap extends StatefulWidget {
 
   final LatLng? focus;
   final LatLng? marker;
+  final LatLng? destination;
   final double? accuracy;
   final bool showMe;
   final double bottomPadding;
@@ -147,6 +158,7 @@ class _PreviewMapState extends State<_PreviewMap> with SingleTickerProviderState
             painter: _PreviewPainter(
               focus: widget.focus,
               marker: widget.marker,
+              destination: widget.destination,
               accuracy: widget.accuracy,
               showMe: widget.showMe,
               bottomPadding: widget.bottomPadding,
@@ -182,6 +194,7 @@ class _PreviewPainter extends CustomPainter {
   _PreviewPainter({
     required this.focus,
     required this.marker,
+    required this.destination,
     required this.accuracy,
     required this.showMe,
     required this.bottomPadding,
@@ -191,6 +204,7 @@ class _PreviewPainter extends CustomPainter {
 
   final LatLng? focus;
   final LatLng? marker;
+  final LatLng? destination;
   final double? accuracy;
   final bool showMe;
   final double bottomPadding;
@@ -278,10 +292,25 @@ class _PreviewPainter extends CustomPainter {
       canvas.drawCircle(center, 11, Paint()..color = Colors.white);
       canvas.drawCircle(center, 8, Paint()..color = scheme.primary);
     }
-    if (m != null) _drawPin(canvas, pinAt);
+    final d = destination;
+    if (d != null) {
+      final dx = (d.longitude - f.longitude) * 111320 * cosLat / _metersPerPixel;
+      final dy = -(d.latitude - f.latitude) * 110574 / _metersPerPixel;
+      final dest = center + Offset(dx, dy);
+      canvas.drawLine(
+        center,
+        dest,
+        Paint()
+          ..color = scheme.secondary.withValues(alpha: 0.6)
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round,
+      );
+      _drawPin(canvas, dest, scheme.secondary, scheme.onSecondary);
+    }
+    if (m != null) _drawPin(canvas, pinAt, scheme.tertiary, scheme.onTertiary);
   }
 
-  void _drawPin(Canvas canvas, Offset tip) {
+  void _drawPin(Canvas canvas, Offset tip, Color color, Color onColor) {
     canvas.drawOval(
       Rect.fromCenter(center: tip, width: 22, height: 8),
       Paint()..color = Colors.black.withValues(alpha: 0.18),
@@ -292,10 +321,10 @@ class _PreviewPainter extends CustomPainter {
       ..lineTo(head.dx - 11, head.dy + 8)
       ..lineTo(head.dx + 11, head.dy + 8)
       ..close();
-    final fill = Paint()..color = scheme.tertiary;
+    final fill = Paint()..color = color;
     canvas.drawPath(path, fill);
     canvas.drawCircle(head, 15, fill);
-    canvas.drawCircle(head, 6, Paint()..color = scheme.onTertiary);
+    canvas.drawCircle(head, 6, Paint()..color = onColor);
   }
 
   @override
