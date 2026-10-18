@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../services/app_services.dart';
 import '../services/backend.dart';
+import 'drawer.dart';
 import 'share_screen.dart';
 import 'track_screen.dart';
 
@@ -14,11 +16,28 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
+  late final AppServices _services = AppServices(widget.user);
+
+  @override
+  void initState() {
+    super.initState();
+    AppServices.current = _services;
+  }
+
+  @override
+  void dispose() {
+    _services.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
+      drawer: KapinDrawer(
+        user: widget.user,
+        onSelectTab: (i) => setState(() => _index = i),
+      ),
       body: Stack(
         children: [
           IndexedStack(
