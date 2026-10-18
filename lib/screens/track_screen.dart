@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../models/share_session.dart';
@@ -108,7 +109,26 @@ class _TrackScreenState extends State<TrackScreen> {
             controller: _mapCtl,
             focus: point,
             markerAt: point,
-            bottomPadding: s == null ? 0 : 260,
+            destination: s != null && s.hasDestination
+                ? LatLng(s.destinationLat!, s.destinationLng!)
+                : null,
+            bottomPadding: s == null ? 0 : 290,
+          ),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: FloatingRoundButton(
+                child: IconButton(
+                  tooltip: 'Menu',
+                  icon: const Icon(Icons.menu_rounded),
+                  onPressed: () => Scaffold.maybeOf(context)?.openDrawer(),
+                ),
+              ),
+            ),
           ),
         ),
         Positioned(
@@ -204,6 +224,17 @@ class _TrackScreenState extends State<TrackScreen> {
           '${s.latitude.toStringAsFixed(5)}, ${s.longitude.toStringAsFixed(5)}',
           style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
         ),
+        if (s.hasDestination) ...[
+          const SizedBox(height: 10),
+          Chip(
+            avatar: const Icon(Icons.flag_rounded, size: 18),
+            label: Text(
+              '${s.destinationName ?? 'Destination'} \u00b7 '
+              '${distanceLabel(Geolocator.distanceBetween(s.latitude, s.longitude, s.destinationLat!, s.destinationLng!))} away',
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         OutlinedButton.icon(
           style: OutlinedButton.styleFrom(
