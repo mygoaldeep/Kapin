@@ -35,6 +35,19 @@ if "EnableImpeller" not in s:
         s,
         count=1,
     )
+if 'android:scheme="sms"' not in s:
+    # Android 11+ package visibility for url_launcher (sms, tel, https, geo).
+    intents = (
+        '<intent><action android:name="android.intent.action.VIEW" /><data android:scheme="https" /></intent>\n'
+        '        <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="tel" /></intent>\n'
+        '        <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="sms" /></intent>\n'
+        '        <intent><action android:name="android.intent.action.SENDTO" /><data android:scheme="smsto" /></intent>\n'
+        '        <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="geo" /></intent>'
+    )
+    if "<queries>" in s:
+        s = s.replace("<queries>", "<queries>\n        " + intents, 1)
+    else:
+        s = s.replace("<application", "<queries>\n        " + intents + "\n    </queries>\n\n    <application", 1)
 s = re.sub(r'android:label="[^"]*"', 'android:label="Kapin"', s, count=1)
 manifest.write_text(s)
 
