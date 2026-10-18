@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../services/app_services.dart';
 import '../services/backend.dart';
 import '../services/share_controller.dart';
 import '../utils.dart';
@@ -20,7 +21,7 @@ class ShareScreen extends StatefulWidget {
 }
 
 class _ShareScreenState extends State<ShareScreen> {
-  late final ShareController _c = ShareController(widget.user.uid);
+  final ShareController _c = AppServices.current.share;
   final _mapCtl = AppMapController();
   Duration _duration = const Duration(hours: 1);
   Position? _lastCamera;
@@ -37,7 +38,6 @@ class _ShareScreenState extends State<ShareScreen> {
   @override
   void dispose() {
     _c.removeListener(_follow);
-    _c.dispose();
     super.dispose();
   }
 
@@ -52,11 +52,6 @@ class _ShareScreenState extends State<ShareScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  Future<void> _signOut() async {
-    await _c.stopSharing();
-    await Backend.instance.auth.signOut();
   }
 
   @override
@@ -90,19 +85,10 @@ class _ShareScreenState extends State<ShareScreen> {
                   child: Row(
                     children: [
                       FloatingRoundButton(
-                        child: PopupMenuButton<String>(
-                          icon: const Icon(Icons.account_circle_outlined),
-                          tooltip: 'Account',
-                          onSelected: (v) {
-                            if (v == 'out') _signOut();
-                          },
-                          itemBuilder: (_) => [
-                            PopupMenuItem(
-                              enabled: false,
-                              child: Text(widget.user.email ?? 'Signed in'),
-                            ),
-                            const PopupMenuItem(value: 'out', child: Text('Sign out')),
-                          ],
+                        child: IconButton(
+                          tooltip: 'Menu',
+                          icon: const Icon(Icons.menu_rounded),
+                          onPressed: () => Scaffold.maybeOf(context)?.openDrawer(),
                         ),
                       ),
                       const Spacer(),
