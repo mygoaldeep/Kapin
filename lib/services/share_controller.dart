@@ -1,21 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../models/place_info.dart';
 import '../models/share_session.dart';
 import 'backend.dart';
-
-class AppException implements Exception {
-  AppException(this.message);
-  final String message;
-  @override
-  String toString() => message;
-}
+import 'location_service.dart';
 
 /// Owns location, reverse geocoding and the active share session.
-/// While a share is live, position updates are pushed to Firestore.
+/// While a share is live, position updates are pushed to the backend.
 class ShareController extends ChangeNotifier {
   ShareController(this.userId);
 
@@ -28,6 +22,9 @@ class ShareController extends ChangeNotifier {
   String? error;
   bool locating = false;
   bool busy = false;
+
+  /// Called whenever a fresh position + address is known (used for history).
+  void Function(Position position, String address)? onFix;
 
   /// Ticks every second while sharing; separate so only the countdown rebuilds.
   final remaining = ValueNotifier<Duration>(Duration.zero);
@@ -43,23 +40,9 @@ class ShareController extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) {
-        throw AppException('Location services are turned off.');
-      }
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-      }
-      if (perm == LocationPermission.denied) {
-        throw AppException('Location permission was denied.');
-      }
-      if (perm == LocationPermission.deniedForever) {
-        throw AppException('Location permission is blocked. Enable it in system settings.');
-      }
-      position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
+      position = await LocationService.current();
       await _refreshAddress(position!);
+      onFix?.call(position!, address);
     } catch (e) {
       error = e is AppException ? e.message : 'Could not get your location.';
     }
@@ -69,23 +52,19 @@ class ShareController extends ChangeNotifier {
 
   Future<void> _refreshAddress(Position p) async {
     _lastGeocoded = p;
-    try {
-      final marks = await placemarkFromCoordinates(p.latitude, p.longitude);
-      if (marks.isEmpty) {
-        address = 'Address unavailable';
-        return;
-      }
-      final m = marks.first;
-      final parts = <String?>[m.street, m.locality, m.country]
-          .where((s) => s != null && s.trim().isNotEmpty)
-          .cast<String>();
-      address = parts.isEmpty ? 'Address unavailable' : parts.join(', ');
-    } catch (_) {
-      address = 'Address unavailable';
-    }
+    address = await LocationService.addressFor(p.latitude, p.longitude);
   }
 
-  Future<void> startSharing(Duration duration) async {
+  /// Starts sharing if not already sharing. Returns the live session, or null.
+  Future<ShareSession?> ensureSharing(Duration duration) async {
+    if (session != null) return session;
+    if (position == null) await locate();
+    if (position == null) return null;
+    await startSharing(duration);
+    return session;
+  }
+
+  Future<void> startSharing(Duration duration, {String? tripName, PlaceInfo? destination}) async {
     final p = position;
     if (p == null || busy) return;
     busy = true;
@@ -100,6 +79,10 @@ class ShareController extends ChangeNotifier {
         address: address,
         active: true,
         expiresAt: DateTime.now().add(duration),
+        tripName: tripName,
+        destinationName: destination?.name,
+        destinationLat: destination?.lat,
+        destinationLng: destination?.lng,
       );
       await _shares.create(s);
       session = s;
@@ -145,6 +128,7 @@ class ShareController extends ChangeNotifier {
         Geolocator.distanceBetween(last.latitude, last.longitude, p.latitude, p.longitude) > 100) {
       await _refreshAddress(p);
     }
+    onFix?.call(p, address);
     notifyListeners();
     try {
       await _shares.updatePosition(s.id, p.latitude, p.longitude, address);
